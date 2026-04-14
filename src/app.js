@@ -7,6 +7,7 @@ import {studentRoutes} from '#modules/modules';
 
 
 const app = express();
+app.use(express.json());
 
 app.get('/', (req, res) =>{
     res.json({
@@ -20,7 +21,7 @@ app.get('/', (req, res) =>{
 })
 
 
-app.use(express.json());
+
 
 //app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);

@@ -3,7 +3,7 @@ import { sanitizeString, sanitizeInt,isValidInt } from '#utils/sanitize';
 
 export const createStudents = async (body ) => {
 
-
+     console.log('body received:', body);
 
     const cleanName = sanitizeString(body.name);
     const cleanAge = sanitizeInt(body.age);
