@@ -1,6 +1,12 @@
 import express from "express";
 import {errorHandler} from '#middleware/errorHandlers';
-import {studentRoutes} from '#modules/modules';
+import {studentRoutes ,
+         teacherRoutes,
+          subjectRoutes,
+           classRoutes
+        
+    } from '#modules/modules';
+
 //import authRoutes from '#auth/auth.routes';
 //node seimport { version } from "react";
 
@@ -15,6 +21,9 @@ app.get('/', (req, res) =>{
         version: '1.0.0',
         endpoints: {
             students: '/api/students',
+            teachers: '/api/teachers',
+            subjects: '/api/subjects',
+            classes: '/api/classes'
             
         }
     })
@@ -25,6 +34,10 @@ app.get('/', (req, res) =>{
 
 //app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/teachers', teacherRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/classes', classRoutes);
+
 
 app.use(errorHandler);
 

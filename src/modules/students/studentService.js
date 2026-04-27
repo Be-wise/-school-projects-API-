@@ -29,12 +29,12 @@ export const getAllStudents = async () => {
 }
 
 export const getStudentById = async (id) =>{
-    const studentID = sanitizeInt(Id);
-    if (!isValidInt(studentId)) throw { status:400, message: ' Invalid student ID '};
+    const studentID = sanitizeInt(id);
+    if (!isValidInt(studentID)) throw { status:400, message: ' Invalid student ID '};
 
     const result = await pool.query(
         'SELECT * FROM students WHERE id = $1',
-        [studentId]
+        [studentID]
     );
     if (result.rows.length === 0) throw {status:404, message: 'Student not found'};
 
@@ -44,19 +44,30 @@ export const getStudentById = async (id) =>{
 
 export const updateStudent = async (id, body) => {
     const studentId = sanitizeInt(id);
-    const cleanName = sanitizeString(body.name);
-    const cleanAge = sanitizeInt(body.age);
+     if (!isValidInt(studentId)) throw { status: 400, message: 'Invalid student ID'};
+     
+     const existing = await pool.query(
+        'SELECT * FROM students WHERE id = $1',
+        [studentId]
+     )
+     if (existing.rows.length === 0) throw {status: 404, message: 'Student not found'};
+      
+    const cleanName = body.name !== undefined ? sanitizeString(body.name) :existing.rows[0].name;
+    const cleanAge = body.age!== undefined ?sanitizeInt(body.age) :existing.rows[0].age;
 
-    if (!isValidInt(studentId)) throw { status: 400, message: 'Invalid student ID'};
-    if (!cleanName) throw { status: 400, message: 'Name is required'};
-    if (!isValidInt(cleanAge)) throw { status:400, message:'Invalid Age'};
+   
+    if (body.name !== undefined && !cleanName) throw { status: 400, message: 'Name is required'};
+    if (body.age !== undefined &&!isValidInt(cleanAge)) throw { status:400, message:'Invalid Age'};
     
+
     const result = await pool.query(
        'UPDATE students SET name =$1, age = $2 WHERE id = $3 RETURNING *',
-       [cleanName, cleanAge, studentId] 
+       [cleanName, cleanAge, studentId]
+
+    
     )
 
-    if (result.rows.length === 0 ) throw { status:404, message: 'Student not found'};
+   
 
     return result.rows[0];
 
