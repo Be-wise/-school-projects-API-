@@ -19,6 +19,38 @@ export const createTeacher = async (body) => {
      return result.rows[0];
 }
 
+export const bulkCreateTeachers = async (teachersArray) => {
+    const results = {
+        successfulInserts: [],
+        failedInserts: []
+    };
+    for (const teacher of teachersArray) {
+        try {
+            const cleanName = sanitizeString(teacher.name);
+            if (!cleanName) {
+                results.failedInserts.push({ teacher, reason: 'Name is required' });
+                continue;
+            }
+            const result = await pool.query(
+                'INSERT INTO teachers (name) VALUES ($1) RETURNING *',
+                [cleanName]
+            );
+            results.successfulInserts.push(result.rows[0]);
+        } catch (error) {
+            if (error.code === '23505') {
+                results.failedInserts.push({ teacher, reason: 'Teacher already exists' });
+            } else {
+                results.failedInserts.push({ teacher, reason: 'Unexpected error' });
+            }
+        }
+    }
+    return {
+        message: `${results.successfulInserts.length} records inserted successfully, ${results.failedInserts.length} records failed to insert.`,
+        successfulInserts: results.successfulInserts,
+        failedInserts: results.failedInserts
+    };
+};
+
 export const getAllTeachers = async () => {
     const result = await pool.query('SELECT * FROM teachers ORDER BY id ASC');
     return result.rows;

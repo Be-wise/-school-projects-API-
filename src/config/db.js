@@ -1,13 +1,13 @@
 import pkg from 'pg';
 
 const { Pool } = pkg;
-
 import dotenv from 'dotenv';
 dotenv.config();
 
 
 
-
+console.log('DB host:', process.env.DB_HOST)
+console.log('DB name:', process.env.DB_NAME)
 
 
 const pool = new Pool({

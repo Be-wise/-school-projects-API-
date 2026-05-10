@@ -10,6 +10,15 @@ export const createStudents = async (req, res, next) => {
     }
 }
 
+export const bulkCreateStudents = async (req, res, next) => {
+    try {
+        const result = await studentService.bulkCreateStudents(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        next(error);
+    };
+};
+
 export const getAllStudents = async (req, res, next) => {
     try {
         const students = await studentService.getAllStudents();

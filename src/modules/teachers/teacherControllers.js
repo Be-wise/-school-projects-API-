@@ -12,6 +12,14 @@ export const createTeacher = async (req, res, next) => {
     };
 
 }
+export const bulkCreateTeachers = async (req, res, next) => {
+    try {
+        const result = await teacherService.bulkCreateTeachers(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        next(error);
+    };
+};
 
 export const getAllTeachers = async (req, res, next) => {
     try {

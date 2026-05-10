@@ -9,6 +9,15 @@ export const createSubject = async (req, res, next ) =>{
     };
 };
 
+export const bulkCreateSubjects = async (req, res, next) => {
+    try {
+        const result = await subjectsService.bulkCreateSubjects(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        next(error);
+    };
+};
+
 export const getAllSubjects = async (req, res, next ) =>{
     try {
        const subject = await subjectsService.getAllSubjects();

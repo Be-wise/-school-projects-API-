@@ -3,7 +3,7 @@ import { sanitizeString, sanitizeInt,isValidInt } from '#utils/sanitize';
 
 export const createStudents = async (body ) => {
 
-     console.log('body received:', body);
+
 
     const cleanName = sanitizeString(body.name);
     const cleanAge = sanitizeInt(body.age);
@@ -19,12 +19,48 @@ export const createStudents = async (body ) => {
     )
 
     return result.rows [0];
+};
 
-}
+export const bulkCreateStudents = async (studentsArray) => {
+    const results = {
+        successfulInserts: [],
+        failedInserts: []
+    };
+    for (const student of studentsArray) {
+        try {
+            const cleanName = sanitizeString(student.name);
+            const cleanAge = sanitizeInt(student.age);
+            if (!cleanName) {
+                results.failedInserts.push({ student, reason: 'Name is required' });
+                continue;
+            }
+            if (!isValidInt(cleanAge)) {
+                results.failedInserts.push({ student, reason: 'Invalid Age' });
+                continue;
+            }
+            const result = await pool.query(
+                'INSERT INTO students (name,age) VALUES ($1, $2) RETURNING  *',
+                [cleanName, cleanAge]
+            );
+            results.successfulInserts.push(result.rows[0]);
+        } catch (error) {
+            if (error.code === '23505') {
+                results.failedInserts.push({ student, reason: 'Student already exists' });
+            } else {
+                results.failedInserts.push({ student, reason: 'Unexpected error' });
+            }
+        }
+    }
+    return {
+        message: `${results.successfulInserts.length} records inserted successfully, ${results.failedInserts.length} records failed to insert.`,
+        successfulInserts: results.successfulInserts,
+        failedInserts: results.failedInserts
+    };
+};
 
 export const getAllStudents = async () => {
     const result = await pool.query('SELECT * FROM students  ORDER BY id ASC');
-    return result.rows[0];
+    return result.rows;
     
 }
 

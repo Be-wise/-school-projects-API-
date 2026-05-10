@@ -18,6 +18,38 @@ export const createClass = async (body) => {
      }; 
 
 };
+ export const bulkCreateClasses = async (classesArray) => {
+    const results = {
+        successfulInserts: [],
+        failedInserts: []
+    };
+    for (const classItem of classesArray) {
+        try {
+            const cleanName = sanitizeString(classItem.name);
+
+            if (!cleanName) {
+                results.failedInserts.push({ classItem, reason: 'Class name is required' });
+                continue;
+            }
+            const result = await pool.query(
+                'INSERT INTO classes (name) VALUES ($1) RETURNING *',
+                [cleanName]
+            );
+            results.successfulInserts.push(result.rows[0]);
+        } catch (error) {
+            if (error.code === '23505') {
+                results.failedInserts.push({ classItem, reason: 'Class already exists' });
+            } else {
+                results.failedInserts.push({ classItem, reason: 'Unexpected error' });
+            }
+        }
+    }
+    return {
+        message: `${results.successfulInserts.length} records inserted successfully, ${results.failedInserts.length} records failed to insert.`,
+        successfulInserts: results.successfulInserts,
+        failedInserts: results.failedInserts
+    };
+};
 
 
 export const getAllClasses = async () => {

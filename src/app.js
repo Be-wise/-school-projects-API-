@@ -1,13 +1,18 @@
 import express from "express";
+import authRoutes from '#auth/authRoutes';
 import {errorHandler} from '#middleware/errorHandlers';
-import {studentRoutes ,
+import {
+    
+        studentRoutes ,
          teacherRoutes,
           subjectRoutes,
-           classRoutes
+           classRoutes,
+           attendanceRoutes,
+           gradesRoutes
         
     } from '#modules/modules';
 
-//import authRoutes from '#auth/auth.routes';
+
 //node seimport { version } from "react";
 
 
@@ -20,11 +25,13 @@ app.get('/', (req, res) =>{
         message: 'Welcome to the Student API',
         version: '1.0.0',
         endpoints: {
+            auth: '/api/auth',
             students: '/api/students',
             teachers: '/api/teachers',
             subjects: '/api/subjects',
-            classes: '/api/classes'
-            
+            classes: '/api/classes',
+            attendance: '/api/attendance',
+            grades: '/api/grades'
         }
     })
 })
@@ -32,12 +39,14 @@ app.get('/', (req, res) =>{
 
 
 
-//app.use('/api/auth', authRoutes);
+
+app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/classes', classRoutes);
-
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/grades', gradesRoutes);
 
 app.use(errorHandler);
 

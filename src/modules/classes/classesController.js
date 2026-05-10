@@ -10,6 +10,15 @@ export const createClass = async (req, res, next) => {
     };
 };
 
+export const bulkCreateClasses = async (req, res, next) => {
+    try {
+        const result = await classesService.bulkCreateClasses(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        next(error);
+    };
+};
+
 export const getAllClasses = async(req, res, next) => {
     try {
         const classes = await classesService.getAllClasses();
