@@ -4,16 +4,14 @@ import { sanitizeString, sanitizeInt,isValidInt } from  '#utils/sanitize';
 export const createTeacher = async (body) => {
 
     const cleanName = sanitizeString(body.name);
-   // const cleanSubject = sanitizeString(body.subject);
-   // const cleanClass = sanitizeString(body.class);
+  
 
     if (!cleanName) throw { status:400, message: 'Name is required' };
-  //  if (!cleanSubject) throw { status: 400, message: 'Subject is required'};
-  //  if (!cleanClass) throw { status: 400, message: 'Class is required'};
+  
 
     const result = await pool.query(
         'INSERT INTO teachers (name) VALUES ($1) RETURNING *',
-        [cleanName]//cleanSubject, cleanClass]
+        [cleanName]
 
     )
      return result.rows[0];

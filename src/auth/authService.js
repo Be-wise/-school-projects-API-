@@ -51,6 +51,15 @@ export const registerUser = async (email, password, role, referenceId) => {
             throw { status:404, message: 'Teacher not found' };
         }
     }
+    if(role ==='parent'&& referenceId){
+        const parent = await pool.query(
+            'SELECT id FROM parents WHERE id = $1',
+            [referenceId]
+        );
+        if(parent.rows.length ===0) {
+            throw {status:404, message: 'Parent not found'};
+        }
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
  
@@ -138,6 +147,17 @@ export const registerBulkUsers = async(usersArray) =>{
         if (teacher.rows.length === 0) {
              results.failedInserts.push({ user, reason: 'Teacher not found' });
             continue;   
+        }
+    }
+
+    if(sanitizedRole === 'parent' && cleanReferenceId) {
+        const parent = await pool.query(
+            'SELECT id FROM parents WHERE id = $1',
+            [cleanReferenceId]
+        );
+        if(parent.rows.length === 0) {
+            results.failedInserts.push({user, reason: ' Parent not found'});
+            continue;
         }
     }
 

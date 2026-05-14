@@ -8,12 +8,13 @@ import {
           subjectRoutes,
            classRoutes,
            attendanceRoutes,
-           gradesRoutes
+           gradesRoutes,
+             parentsRoutes
         
     } from '#modules/modules';
 
 
-//node seimport { version } from "react";
+
 
 
 
@@ -31,7 +32,8 @@ app.get('/', (req, res) =>{
             subjects: '/api/subjects',
             classes: '/api/classes',
             attendance: '/api/attendance',
-            grades: '/api/grades'
+            grades: '/api/grades',
+            parents: '/api/parents'
         }
     })
 })
@@ -47,6 +49,7 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/grades', gradesRoutes);
+app.use('/api/parents', parentsRoutes);
 
 app.use(errorHandler);
 
