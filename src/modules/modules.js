@@ -6,6 +6,7 @@ import classRoutes from '#modules/classes/classesRoutes';
 import attendanceRoutes from '#modules/attendance/attendanceRoutes';
 import gradesRoutes from '#modules/grades/gradesRoutes';
 import parentsRoutes from '#modules/parents/parentsRoutes';
+import classSubjectsRoutes from '#modules/class-subjects/classSubjectsRoutes';
 
 
 
@@ -18,6 +19,7 @@ export {
     classRoutes,
     attendanceRoutes,
     gradesRoutes,
-    parentsRoutes
+    parentsRoutes,
+    classSubjectsRoutes
 };
 

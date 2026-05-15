@@ -1,5 +1,5 @@
 import express from 'express';
-import * as parentsService from '#modules/parents/parentsService.js';
+import * as parentsService from '#modules/parents/parentsService';
 
 
 export const createParent = async (req, res, next) => {

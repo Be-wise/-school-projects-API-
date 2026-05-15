@@ -9,7 +9,8 @@ import {
            classRoutes,
            attendanceRoutes,
            gradesRoutes,
-             parentsRoutes
+             parentsRoutes,
+                classSubjectsRoutes
         
     } from '#modules/modules';
 
@@ -33,7 +34,8 @@ app.get('/', (req, res) =>{
             classes: '/api/classes',
             attendance: '/api/attendance',
             grades: '/api/grades',
-            parents: '/api/parents'
+            parents: '/api/parents',
+            classSubjects: '/api/class-subjects'
         }
     })
 })
@@ -50,7 +52,7 @@ app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/grades', gradesRoutes);
 app.use('/api/parents', parentsRoutes);
-
+app.use('/api/class-subjects', classSubjectsRoutes);
 app.use(errorHandler);
 
 export default app;

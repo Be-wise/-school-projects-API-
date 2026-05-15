@@ -6,6 +6,7 @@ import { authorize } from '#middleware/authorize';
 const router = express.Router();    
 
 router.post('/', authenticate, authorize('admin'), classController.createClass);
+router.post('/bulk', authenticate, authorize('admin'),classController.bulkCreateClasses);
 router.get('/', authenticate, authorize('admin', 'teacher','student', 'parent'), classController.getAllClasses);
 router.get('/:id', authenticate, authorize('admin', 'teacher','student', 'parent'), classController.getClassById);
 router.patch('/:id', authenticate, authorize('admin'), classController.updateClassById);
