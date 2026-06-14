@@ -70,8 +70,18 @@ export const bulkCreateClassSubjects = async (classSubjectsArray) => {
 };
 
 
-export const getAllClassSubjects = async () => {
-    const result = await pool.query('SELECT * FROM class_subjects WHERE is_active = TRUE ORDER BY id ASC');
+export const getAllClassSubjects = async (user) => {
+    let result;
+    if (user.role === 'admin') {
+        result = await pool.query('SELECT * FROM class_subjects WHERE is_active = TRUE ORDER BY id ASC');
+    }
+
+    if (user.role === 'teacher') {
+        result = await pool.query(
+            'SELECT * FROM class_subjects WHERE teacher_id = $1 AND is_active = TRUE ORDER BY id ASC',
+            [user.referenceId]
+        );
+    }
     return result.rows;
 };
 
@@ -145,12 +155,24 @@ export const deleteClassSubject = async (id) => {
 };
 
 
-export const enrollStudentInClassSubject = async (studentId, classSubjectId) => {
+export const enrollStudentInClassSubject = async (studentId, classSubjectId, user) => {
     const cleanStudentId = sanitizeInt(studentId);
     const cleanClassSubjectId = sanitizeInt(classSubjectId);
 
     if(!isValidInt(cleanStudentId)) throw { status:400, message: 'Invalid student ID' };
     if(!isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
+
+    if(user.role === 'teacher') {
+        const classSubject = await pool.query(
+            `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+            [cleanClassSubjectId]
+        );
+        if(classSubject.rows.length === 0) throw {
+            status:404, message: 'Class subject not found' };
+
+        if(classSubject.rows[0].teacher_id !== user.referenceId) throw { 
+            status:403, message: 'Access denied' };
+    }
 
     try {
         const result = await pool.query(
@@ -164,7 +186,8 @@ export const enrollStudentInClassSubject = async (studentId, classSubjectId) => 
             )
         
         RETURNING *`,
-        [cleanStudentId, cleanClassSubjectId] )
+        [cleanStudentId, cleanClassSubjectId] 
+        );
 
         if(result.rows.length === 0) throw { status:404, message: 'Student or class subject not found' };
         return { message: 'Student enrolled in class subject successfully' };
@@ -176,7 +199,7 @@ export const enrollStudentInClassSubject = async (studentId, classSubjectId) => 
     }
 };
 
-export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray) => {
+export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray, user) => {
     const results = {
         successfulInserts: [],
         failedInserts: []
@@ -193,6 +216,23 @@ export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray) => {
             if (!isValidInt(cleanClassSubjectId)) {
                 results.failedInserts.push({ ...enrollment, error: 'Invalid class subject ID' });
                 continue;
+            }
+
+            if(user.role === 'teacher') {
+                const classSubject = await pool.query(
+                    `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+                    [cleanClassSubjectId]
+                );
+                if(classSubject.rows.length === 0) {
+                    results.failedInserts.push({ ...enrollment, error: 'Class subject not found' });
+                    continue;
+                }
+
+                if(classSubject.rows[0].teacher_id !== user.referenceId) {
+                    results.failedInserts.push({ ...enrollment, error: 'Access denied' });
+                    continue;
+                }
+
             }
 
             const result = await pool.query(
@@ -218,7 +258,6 @@ export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray) => {
             if (error.code === '23505') {
                 results.failedInserts.push({ ...enrollment, error: 'Student is already enrolled in this class subject' });
             } else {
-                console.log('unexpected error:', error);
                 results.failedInserts.push({ ...enrollment, error: 'Unexpected error' });
             
             }
@@ -232,12 +271,31 @@ export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray) => {
 
 
 
-export const unenrollStudentFromClassSubject = async (studentId, classSubjectId) => {
+export const unenrollStudentFromClassSubject = async (studentId, classSubjectId, user) => {
     const cleanStudentId = sanitizeInt(studentId);
     const cleanClassSubjectId = sanitizeInt(classSubjectId);
 
     if(!isValidInt(cleanStudentId)) throw { status:400, message: 'Invalid student ID' };
     if(!isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
+
+    const existing = await pool.query (
+        'SELECT * FROM enrollments WHERE student_id = $1 AND class_subject_id = $2 AND is_active = TRUE',
+        [cleanStudentId, cleanClassSubjectId]
+    );
+
+    if(existing.rows.length === 0) throw { status:404, message: 'Enrollment not found' };
+
+    if(user.role === 'teacher') {
+        const classSubject = await pool.query(
+            `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+            [cleanClassSubjectId]
+        );
+        if(classSubject.rows.length === 0) throw { 
+            status:404, message: 'Class subject not found' };
+
+        if(classSubject.rows[0].teacher_id !== user.referenceId) throw {
+             status:403, message: 'Access denied' };
+    }
 
     const result = await pool.query(
     'UPDATE enrollments SET is_active = FALSE WHERE student_id = $1 AND class_subject_id = $2 AND is_active = TRUE RETURNING *',
@@ -248,9 +306,22 @@ export const unenrollStudentFromClassSubject = async (studentId, classSubjectId)
 }
 
 
-export const getStudentsByClassSubjectId = async (classSubjectId) => {
+export const getStudentsByClassSubjectId = async (classSubjectId,user)=>{
     const cleanClassSubjectId = sanitizeInt(classSubjectId);
     if (!isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
+
+    if (user.role === 'teacher') {
+        const classSubject = await pool.query(
+            `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+            [cleanClassSubjectId]
+        );
+        if(classSubject.rows.length === 0) throw { 
+            status:404, message: 'Class subject not found' };
+
+        if(classSubject.rows[0].teacher_id !== user.referenceId) throw {
+             status:403, message: 'Access denied' };
+
+    }
 
     const result = await pool.query(
         `SELECT students.*

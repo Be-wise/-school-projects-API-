@@ -58,25 +58,86 @@ export const bulkCreateStudents = async (studentsArray) => {
     };
 };
 
-export const getAllStudents = async () => {
-    const result = await pool.query('SELECT * FROM students  ORDER BY id ASC');
+export const getAllStudents = async (user) => {
+    let result;
+    if (user.role === 'admin') {
+        result = await pool.query('SELECT * FROM students ORDER BY id ASC');
+    }
+
+    if (user.role === 'teacher') {
+        result = await pool.query(`
+            SELECT DISTINCT students.*
+            FROM students
+            JOIN enrollments ON students.id = enrollments.student_id
+            JOIN class_subjects ON enrollments.class_subject_id = class_subjects.id
+            WHERE class_subjects.teacher_id = $1
+            AND students.is_active = TRUE
+            AND enrollments.is_active = TRUE
+            ORDER BY students.id ASC`,
+             [user.referenceId]
+            );
+     }
+
+
     return result.rows;
     
 }
 
-export const getStudentById = async (id) =>{
-    const studentID = sanitizeInt(id);
-    if (!isValidInt(studentID)) throw { status:400, message: ' Invalid student ID '};
+export const getStudentById = async (id, user) =>{
+    const studentId = sanitizeInt(id);
+    if (!isValidInt(studentId)) throw { status:400, message: ' Invalid student ID '};
 
-    const result = await pool.query(
-        'SELECT * FROM students WHERE id = $1',
-        [studentID]
-    );
-    if (result.rows.length === 0) throw {status:404, message: 'Student not found'};
+    let result;
+
+    if (user.role === 'admin') {
+     result = await pool.query(
+        'SELECT * FROM students WHERE id = $1 AND is_active = TRUE',
+        [studentId]
+    )
+    };
+
+    if (user.role === 'teacher') {
+        result = await pool.query(`
+            SELECT students.*
+            FROM students
+            JOIN enrollments ON students.id = enrollments.student_id
+            JOIN class_subjects ON enrollments.class_subject_id = class_subjects.id
+            WHERE students.id = $1
+             AND class_subjects.teacher_id = $2
+            AND students.is_active = TRUE
+            AND enrollments.is_active = TRUE`,
+             [studentId, user.referenceId]
+            );
+     }
+
+     if (user.role === 'student') {
+        if (user.referenceId !== studentId) {
+            throw { status: 403, message: 'Access denied' };
+        }
+        result = await pool.query(
+            `SELECT * FROM students WHERE id = $1 AND is_active = TRUE`, [studentId]
+        );
+     }
+
+     if (user.role === 'parent') {
+        result = await pool.query(`
+            SELECT students.*
+            FROM students
+            JOIN parent_students ON students.id = parent_students.student_id
+            WHERE students.id= $1
+            AND parent_students.parent_id = $2
+            AND students.is_active = TRUE
+            `,
+             [studentId,user.referenceId]
+            );
+     }
+      if (result.rows.length === 0) throw {status:404, message: 'Student not found'};
 
     return result.rows[0];
+     }
+    
 
-}
+
 
 export const updateStudent = async (id, body) => {
     const studentId = sanitizeInt(id);
@@ -111,7 +172,7 @@ export const updateStudent = async (id, body) => {
 
 export const deleteStudent = async (id) => {
     const studentId = sanitizeInt(id);
-    if (!isValidInt(studeentId)) throw {status: 400, message: 'Invalid student ID'};
+    if (!isValidInt(studentId)) throw {status: 400, message: 'Invalid student ID'};
 
     const result = await pool.query(
         'DELETE FROM students WHERE id = $1 RETURNING *',

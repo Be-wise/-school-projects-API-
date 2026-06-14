@@ -21,7 +21,7 @@ export const bulkCreateStudents = async (req, res, next) => {
 
 export const getAllStudents = async (req, res, next) => {
     try {
-        const students = await studentService.getAllStudents();
+        const students = await studentService.getAllStudents(req.user);
         res.json(students);
 
     } catch (error) {
@@ -31,7 +31,7 @@ export const getAllStudents = async (req, res, next) => {
 
 export const getStudentById = async (req, res, next) => {
     try {
-        const student = await studentService.getStudentById(req.params.id);
+        const student = await studentService.getStudentById(req.params.id, req.user);
         res.json(student);
     
     } catch (error) {

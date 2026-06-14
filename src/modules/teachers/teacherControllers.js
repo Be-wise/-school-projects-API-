@@ -23,7 +23,7 @@ export const bulkCreateTeachers = async (req, res, next) => {
 
 export const getAllTeachers = async (req, res, next) => {
     try {
-       const teachers = await teacherService.getAllTeachers();
+       const teachers = await teacherService.getAllTeachers(req.user);
        res.json(teachers);
     } catch (error) {
         next (error)
@@ -33,7 +33,7 @@ export const getAllTeachers = async (req, res, next) => {
 
 export const getTeacherById = async (req, res, next ) => {
     try {
-        const teacher = await teacherService.getTeacherById(req.params.id);
+        const teacher = await teacherService.getTeacherById(req.params.id, req.user);
         res.json(teacher);
     } catch (error) {
         next(error);

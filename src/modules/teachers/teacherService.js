@@ -49,22 +49,48 @@ export const bulkCreateTeachers = async (teachersArray) => {
     };
 };
 
-export const getAllTeachers = async () => {
-    const result = await pool.query('SELECT * FROM teachers ORDER BY id ASC');
+export const getAllTeachers = async (user) => {
+    let result;
+
+    if (user.role === 'admin') {
+        result = await pool.query('SELECT * FROM teachers ORDER BY id ASC');
+    }
+
+    if (user.role === 'teacher') {
+         result = await pool.query(
+            'SELECT * FROM teachers WHERE id = $1 ORDER BY id ASC',
+            [user.referenceId]
+        );
+    }
+
     return result.rows;
 
 }
 
-export const getTeacherById = async (id) => {
+export const getTeacherById = async (id, user) => {
     const teacherId = sanitizeInt(id);
     if (!isValidInt(teacherId)) throw {status: 400, message: 'Invalid ID'};
 
-    const result = await pool.query(
-        'SELECT * FROM teachers WHERE id = $1',
+    let result;
+
+    if(user.role === 'admin') { 
+            result = await pool.query(
+        'SELECT * FROM teachers WHERE id = $1 AND is_active = TRUE',
         [teacherId]
 
     );
-    if(result.rows.length === 0) throw { status:404, message: 'teacher not found'};
+}
+
+     if (user.role === 'teacher') {
+        if (teacherId !== user.referenceId) throw { status:403, message: 'Access denied' };
+        result = await pool.query(
+            'SELECT * FROM teachers WHERE id = $1 AND is_active = TRUE',
+            [teacherId]
+        );
+     }
+
+    if(!result || result.rows.length === 0) 
+        throw { status:404, message: 'teacher not found'};
 
     return result.rows[0];
 

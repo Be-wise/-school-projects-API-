@@ -1,7 +1,7 @@
 import { sanitizeString, sanitizeInt, isValidInt } from "#utils/sanitize";
 import pool from "#config/db";
  
-export const createGrade = async (body) => {
+export const createGrade = async (body,user) => {
 const cleanStudentId = sanitizeInt(body.student_id);
 const cleanClassSubjectId = sanitizeInt(body.class_subject_id);
 const cleanMark = sanitizeInt(body.mark);
@@ -18,6 +18,16 @@ if ( cleanTotalMark !== undefined &&
    (!isValidInt(cleanTotalMark)|| cleanTotalMark <0 )
 ) throw { status:400, message: 'Invalid total mark' };
 
+if(user.role === 'teacher') {
+    const classSubject = await pool.query(
+        `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+        [cleanClassSubjectId]
+    );
+    if (classSubject.rows.length === 0) throw { status:404, message: 'Class subject not found' };
+
+    if (classSubject.rows[0].teacher_id !== user.referenceId) throw { status:403, message: 'Access denied' };
+}
+
 try {
     const result = await pool.query(
         'INSERT INTO grades (student_id, class_subject_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
@@ -31,7 +41,7 @@ try {
 }
 };
 
-export const bulkCreateGrades = async (gradesArray) => {
+export const bulkCreateGrades = async (gradesArray, user) => {
     const results = {
         successfulInserts: [],
         failedInserts: []
@@ -75,6 +85,23 @@ export const bulkCreateGrades = async (gradesArray) => {
                 continue;
             }
 
+            if(user.role === 'teacher') {
+                const classSubject = await pool.query(
+                    `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+                    [cleanClassSubjectId]
+                );
+                if (classSubject.rows.length === 0) {
+                    results.failedInserts.push({ grade, reason: 'Class subject not  found' });
+                    continue;
+                }
+
+                if (classSubject.rows[0].teacher_id !== user.referenceId) {
+                    results.failedInserts.push ({ grade, reason: 'Access denied' });
+                    continue;
+                }
+            
+        }
+
             const result = await pool.query(
                 'INSERT INTO grades (student_id, class_subject_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
                 [cleanStudentId, cleanClassSubjectId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark]
@@ -98,23 +125,80 @@ export const bulkCreateGrades = async (gradesArray) => {
     };
 };
 
-export const getAllGrades = async () => {
-    const result = await pool.query('SELECT * FROM grades ORDER BY id ASC');
+export const getAllGrades = async (user) => {
+    let result 
+    if (user.role === 'admin') {
+     result = await pool.query('SELECT * FROM grades ORDER BY id ASC');
+    }
+
+    if (user.role === 'teacher') {
+        result = await pool.query(
+            'SELECT * FROM grades WHERE teacher_id = $1 ORDER BY id ASC',
+            [user.referenceId]
+        );
+    }
+
+    if (user.role === 'student') {
+        result = await pool.query(
+            'SELECT * FROM grades WHERE student_id = $1 ORDER BY id ASC',
+            [user.referenceId]
+        );
+        
+    }
+
+    if (user.role === 'parent') {
+        result = await pool.query(
+            'SELECT * FROM grades WHERE student_id IN (SELECT student_id FROM parent_students WHERE parent_id = $1) ORDER BY id ASC',
+            [user.referenceId]
+        );
+    }
+
     return result.rows;
 };
 
-export const getGradeById = async (id) => {
+export const getGradeById = async (id, user) => {
     const gradeId = sanitizeInt(id);
     if (!isValidInt(gradeId)) throw { status:400, message: 'Invalid grade ID' };
-    const result = await pool.query(
-        'SELECT * FROM grades WHERE id = $1',
-        [gradeId]
-    );
+
+    let result;
+
+    if (user.role === 'admin') {
+        result = await pool.query(
+            'SELECT * FROM grades WHERE id = $1',
+            [gradeId]
+        );
+    }
+
+    if (user.role === 'teacher') {
+        
+        result = await pool.query(
+            'SELECT * FROM grades WHERE id = $1 AND teacher_id = $2',
+            [gradeId, user.referenceId]
+        );
+    }
+
+    if (user.role === 'student') {
+        
+        result = await pool.query(
+            'SELECT * FROM grades WHERE id = $1 AND student_id = $2',
+            [gradeId, user.referenceId]
+        );
+    }
+
+
+    if (user.role === 'parent') {
+
+        result = await pool.query(
+            'SELECT * FROM grades WHERE id = $1 AND student_id IN (SELECT student_id FROM parent_students WHERE parent_id = $2)',
+            [gradeId, user.referenceId]
+        );
+    }
+    
     if (result.rows.length === 0) throw { status:404, message: 'Grade not found' };
     return result.rows[0];
 };
 
-export const updateGrade = async (id, body) => {
+export const updateGrade = async (id, body, user) => {
     const gradeId = sanitizeInt(id);
     if (!isValidInt(gradeId)) throw { status:400, message: 'Invalid grade ID' };
     const existing = await pool.query(  
@@ -137,6 +221,19 @@ export const updateGrade = async (id, body) => {
     if (body.term !== undefined && !isValidInt(cleanTerm)) throw { status:400, message: 'Invalid term' };
     if (body.assessment_type !== undefined && !cleanAssessmentType) throw { status:400, message: 'Assessment type is required' };
     if (body.total_mark !== undefined && (!isValidInt(cleanTotalMark) || cleanTotalMark < 0 || cleanTotalMark > 100)) throw { status:400, message: 'Invalid total mark' };
+
+    if(user.role === 'teacher') {
+    const classSubject = await pool.query(
+        `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+        [cleanClassSubjectId]
+    );
+    if(classSubject.rows.length === 0) throw {
+         status:404, message: 'Class subject not found' };    
+
+    if (classSubject.rows[0].teacher_id !== user.referenceId) throw {
+         status:403, message: 'Access denied' };
+
+}
   try{
     const result = await pool.query(
         'UPDATE grades SET student_id = $1, class_subject_id = $2, mark = $3, term = $4, assessment_type = $5, total_mark = $6 WHERE id = $7 RETURNING *',
@@ -150,14 +247,76 @@ export const updateGrade = async (id, body) => {
 
 };
 
-export const deleteGrade = async (id) => {
+
+export const deleteGrade = async (id, user) => {
     const gradeId = sanitizeInt(id);
-    if (!isValidInt(gradeId)) throw { status:400, message: 'Invalid grade ID' };  
+    if (!isValidInt(gradeId)) throw { status:400, message: 'Invalid grade ID' };
+
+    const  existing = await pool .query(
+        'SELECT * FROM grades WHERE id = $1',
+        [gradeId]
+    );
+    if (existing.rows.length === 0) throw { status:404, message: 'Grade not found' };
+    
+    
+    if(user.role === 'teacher') {
+    const classSubject = await pool.query(
+        `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+        [existing.rows[0].class_subject_id]
+    );
+  
+
+    if (classSubject.rows[0].teacher_id !== user.referenceId) throw {
+         status:403, message: 'Access denied' };
+    }
     
     const result = await pool.query(
         'DELETE FROM grades WHERE id = $1 RETURNING *',
         [gradeId]
     );
     if (result.rows.length === 0) throw { status:404, message: 'Grade not found' };
-    return result.rows[0];
-}   
+    return {message: 'Grade deleted successfully'};
+
+}; 
+
+
+
+export const  getGradesByStudentId = async (studentId, user) => {
+    const cleanStudentId = sanitizeInt(studentId);
+    if (!isValidInt(cleanStudentId)) throw { status:400, message: 'Invalid student ID' };
+
+  let result;
+
+  if (user.role === 'admin') {
+    result = await pool.query(
+        'SELECT * FROM grades WHERE student_id = $1 ORDER BY id ASC',
+        [cleanStudentId]
+    );
+  }
+
+  if (user.role === 'teacher') {
+    result = await pool.query(
+        'SELECT * FROM grades WHERE student_id = $1 AND teacher_id = $2 ORDER BY id ASC',
+        [cleanStudentId, user.referenceId]
+    );
+  }
+
+  if (user.role === 'student') {
+    if (cleanStudentId !== user.referenceId) throw { status:403, message: 'Access denied' };
+    result = await pool.query(
+        'SELECT * FROM grades WHERE student_id = $1 ORDER BY id ASC',
+        [cleanStudentId]
+    );
+  }
+
+  if (user.role === 'parent') {
+    result = await pool.query(
+        'SELECT * FROM grades WHERE student_id = $1 AND student_id IN (SELECT student_id FROM parent_students WHERE parent_id = $2) ORDER BY id ASC',
+        [cleanStudentId, user.referenceId]
+    );
+  }
+
+  return result.rows;
+
+
+}
