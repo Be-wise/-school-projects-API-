@@ -2,6 +2,7 @@ import * as gradesService from '#modules/grades/gradesService';
 
 export const createGrade = async (req, res, next) => {
     try {
+    
         const grade = await gradesService.createGrade(req.body, req.user);
         res.status(201).json(grade);
     } catch (error) {  

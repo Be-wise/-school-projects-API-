@@ -2,6 +2,7 @@ import * as classSubjectsService from '#modules/class-subjects/classSubjectsServ
 
 export const createClassSubject = async (req, res, next) => {
     try {
+        
         const classSubject = await classSubjectsService.createClassSubject(req.body);
         res.status(201).json(classSubject);
     } catch (error) {

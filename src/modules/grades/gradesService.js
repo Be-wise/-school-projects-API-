@@ -2,8 +2,11 @@ import { sanitizeString, sanitizeInt, isValidInt } from "#utils/sanitize";
 import pool from "#config/db";
  
 export const createGrade = async (body,user) => {
+
+
+
 const cleanStudentId = sanitizeInt(body.student_id);
-const cleanClassSubjectId = sanitizeInt(body.class_subject_id);
+const cleanClassSubjectId = sanitizeInt(body.class_subjects_id);
 const cleanMark = sanitizeInt(body.mark);
 const cleanTerm = sanitizeInt(body.term);
 const cleanAssessmentType = sanitizeString(body.assessment_type);
@@ -28,10 +31,24 @@ if(user.role === 'teacher') {
     if (classSubject.rows[0].teacher_id !== user.referenceId) throw { status:403, message: 'Access denied' };
 }
 
+let teacherId 
+
+if (user.role === 'teacher') {
+    teacherId = user.referenceId;
+}
+
+if (user.role === 'admin') {
+    const classSubject = await pool.query(
+        `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+        [cleanClassSubjectId]  )
+    if (classSubject.rows.length === 0) throw { status:404, message: 'Class subject not found' };
+    teacherId = classSubject.rows[0].teacher_id;
+}
+
 try {
     const result = await pool.query(
-        'INSERT INTO grades (student_id, class_subject_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [cleanStudentId, cleanClassSubjectId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark]
+        'INSERT INTO grades (student_id, class_subjects_id, teacher_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [cleanStudentId, cleanClassSubjectId, teacherId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark]
     );
     return result.rows[0];
 
@@ -49,7 +66,7 @@ export const bulkCreateGrades = async (gradesArray, user) => {
     for (const grade of gradesArray) {
         try {
             const cleanStudentId = sanitizeInt(grade.student_id);
-            const cleanClassSubjectId = sanitizeInt(grade.class_subject_id);
+            const cleanClassSubjectId = sanitizeInt(grade.class_subjects_id);
             const cleanMark = sanitizeInt(grade.mark);
             const cleanTerm = sanitizeInt(grade.term);
             const cleanAssessmentType = sanitizeString(grade.assessment_type);
@@ -101,10 +118,27 @@ export const bulkCreateGrades = async (gradesArray, user) => {
                 }
             
         }
+            let teacherId;
+
+            if (user.role === 'teacher') {
+                teacherId = user.referenceId;
+            }
+
+            if (user.role === 'admin') {
+                const classSubject = await pool.query(
+                    `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
+                    [cleanClassSubjectId]
+                );
+                if (classSubject.rows.length === 0) {
+                    results.failedInserts.push({ grade, reason: 'Class subject not found' });
+                    continue;
+                }
+                teacherId = classSubject.rows[0].teacher_id;
+            }
 
             const result = await pool.query(
-                'INSERT INTO grades (student_id, class_subject_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [cleanStudentId, cleanClassSubjectId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark]
+                'INSERT INTO grades (student_id, class_subjects_id, teacher_id, mark, term, assessment_type, total_mark) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+                [cleanStudentId, cleanClassSubjectId, teacherId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark]
             );
             results.successfulInserts.push(result.rows[0]);
 
@@ -209,14 +243,14 @@ export const updateGrade = async (id, body, user) => {
     
     
     const cleanStudentId = body.student_id !== undefined ? sanitizeInt(body.student_id) : existing.rows[0].student_id;
-    const cleanClassSubjectId = body.class_subject_id !== undefined ? sanitizeInt(body.class_subject_id) : existing.rows[0].class_subject_id;
+    const cleanClassSubjectId = body.class_subjects_id !== undefined ? sanitizeInt(body.class_subjects_id) : existing.rows[0].class_subjects_id;
     const cleanMark = body.mark !== undefined ? sanitizeInt(body.mark) : existing.rows[0].mark;
     const cleanTerm = body.term !== undefined ? sanitizeInt(body.term) : existing.rows[0].term;
     const cleanAssessmentType = body.assessment_type !== undefined ? sanitizeString(body.assessment_type) : existing.rows[0].assessment_type;
     const cleanTotalMark = body.total_mark !== undefined ? sanitizeInt(body.total_mark) : existing.rows[0].total_mark;
 
     if (body.student_id !== undefined && !isValidInt(cleanStudentId)) throw { status:400, message: 'Invalid student ID' };
-    if (body.class_subject_id !== undefined && !isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
+    if (body.class_subjects_id !== undefined && !isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
     if (body.mark !== undefined && (!isValidInt(cleanMark) || cleanMark < 0)) throw { status:400, message: 'Invalid mark' };
     if (body.term !== undefined && !isValidInt(cleanTerm)) throw { status:400, message: 'Invalid term' };
     if (body.assessment_type !== undefined && !cleanAssessmentType) throw { status:400, message: 'Assessment type is required' };
@@ -236,7 +270,7 @@ export const updateGrade = async (id, body, user) => {
 }
   try{
     const result = await pool.query(
-        'UPDATE grades SET student_id = $1, class_subject_id = $2, mark = $3, term = $4, assessment_type = $5, total_mark = $6 WHERE id = $7 RETURNING *',
+        'UPDATE grades SET student_id = $1, class_subjects_id = $2, mark = $3, term = $4, assessment_type = $5, total_mark = $6 WHERE id = $7 RETURNING *',
         [cleanStudentId, cleanClassSubjectId, cleanMark, cleanTerm, cleanAssessmentType, cleanTotalMark, gradeId]
     );
     return result.rows[0];
@@ -262,7 +296,7 @@ export const deleteGrade = async (id, user) => {
     if(user.role === 'teacher') {
     const classSubject = await pool.query(
         `SELECT * FROM class_subjects WHERE id = $1 AND is_active = TRUE`,
-        [existing.rows[0].class_subject_id]
+        [existing.rows[0].class_subjects_id]
     );
   
 
@@ -310,11 +344,19 @@ export const  getGradesByStudentId = async (studentId, user) => {
   }
 
   if (user.role === 'parent') {
-    result = await pool.query(
-        'SELECT * FROM grades WHERE student_id = $1 AND student_id IN (SELECT student_id FROM parent_students WHERE parent_id = $2) ORDER BY id ASC',
-        [cleanStudentId, user.referenceId]
+    const studentCheck = await pool.query(
+        'SELECT * FROM parent_students WHERE parent_id = $1 AND student_id = $2',
+        [user.referenceId, cleanStudentId]
     );
-  }
+    if (studentCheck.rows.length === 0) throw { status:403, message: 'Access denied' };
+
+    result = await pool.query(
+        'SELECT * FROM grades WHERE student_id = $1  ORDER BY id ASC',
+        [cleanStudentId]
+    );
+
+
+}
 
   return result.rows;
 

@@ -1,6 +1,6 @@
 
 import studentRoutes from '#modules/students/studentsRoutes';
-import teacherRoutes from '#modules/teachers/teachersRoutes';
+import teachersRoutes from '#modules/teachers/teachersRoutes';
 import subjectRoutes from '#modules/subjects/subjectsRoutes';
 import classRoutes from '#modules/classes/classesRoutes';
 import attendanceRoutes from '#modules/attendance/attendanceRoutes';
@@ -14,7 +14,7 @@ import classSubjectsRoutes from '#modules/class-subjects/classSubjectsRoutes';
 export {
     
     studentRoutes,
-    teacherRoutes,
+    teachersRoutes,
     subjectRoutes,
     classRoutes,
     attendanceRoutes,

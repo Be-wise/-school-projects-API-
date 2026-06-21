@@ -8,6 +8,8 @@ const router = express.Router();
 
 router.post('/', authenticate, authorize('admin'), parentsControllers.createParent);
 router.post('/bulk', authenticate, authorize('admin'), parentsControllers.bulkCreateParents);
+router.post('/:parentId/assign-student/:studentId', authenticate, authorize('admin'), parentsControllers.assignParentToStudent);
+router.post('/bulk-assign', authenticate, authorize('admin'), parentsControllers.bulkAssignParentToStudent);
 router.get('/', authenticate, authorize('admin', 'teacher'), parentsControllers.getAllParents);
 router.get('/:id', authenticate, authorize('admin', 'teacher', 'student', 'parent'), parentsControllers.getParentsById);
 router.patch('/:id', authenticate, authorize('admin'), parentsControllers.updateParent);

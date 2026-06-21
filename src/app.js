@@ -4,7 +4,7 @@ import {errorHandler} from '#middleware/errorHandlers';
 import {
     
         studentRoutes ,
-         teacherRoutes,
+         teachersRoutes,
           subjectRoutes,
            classRoutes,
            attendanceRoutes,
@@ -14,13 +14,47 @@ import {
         
     } from '#modules/modules';
 
+import helmet from 'helmet'
+import cors from 'cors'
+import compression from 'compression'
+import morgan from 'morgan'
+import rateLimit from 'express-rate-limit'
+
+const app = express()
+
+app.use(compression())
 
 
+app.use(morgan('dev'))
 
 
+app.use(helmet())
 
-const app = express();
-app.use(express.json());
+app.use(cors({
+    origin: 'http://localhost:5173'  
+    
+}))
+
+
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 35,
+    message: { error: 'Too many requests, please try again later' }
+})
+
+const authLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,  // 1 minute
+    max: 10,
+    message: { error: 'Too many login attempts, please try again later' }
+})
+
+app.use(express.json())
+app.use(generalLimiter)  // applies to all routes
+
+
+app.use((req, res, next) => {
+    next()
+})
 
 app.get('/', (req, res) =>{
     res.json({
@@ -43,10 +77,10 @@ app.get('/', (req, res) =>{
 
 
 
-
+app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/teachers', teacherRoutes);
+app.use('/api/teachers', teachersRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);

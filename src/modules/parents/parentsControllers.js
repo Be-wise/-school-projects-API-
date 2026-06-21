@@ -54,3 +54,23 @@ export const deleteParent = async (req, res, next) => {
         next(error);
     }
 }
+
+
+export const assignParentToStudent = async (req, res, next) => {
+    try {
+        const result = await parentsService.assignParentToStudent(req.params.parentId, req.params.studentId);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+export const bulkAssignParentToStudent = async (req, res, next) => {
+    try {
+        const results = await parentsService.bulkAssignParentToStudent(req.body);
+        res.json(results);
+    } catch (error) {
+        next(error);
+    }
+}   

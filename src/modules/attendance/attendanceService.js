@@ -3,7 +3,7 @@ import { sanitizeString, sanitizeInt, isValidInt } from '#utils/sanitize';
 
 export const createAttendance = async (body, user) => {
     const cleanStudentId = sanitizeInt(body.student_id);
-    const cleanClassSubjectId = sanitizeInt(body.class_subject_id);
+    const cleanClassSubjectId = sanitizeInt(body.class_subjects_id);
     const cleanStatus = sanitizeString(body.status);
     const cleanDayDate = sanitizeString(body.day_date);
 
@@ -23,7 +23,7 @@ export const createAttendance = async (body, user) => {
 }
   try{
     const result = await pool.query(
-        'INSERT INTO attendance (student_id, class_subject_id, status, day_date) VALUES ($1, $2, $3, $4) RETURNING *',
+        'INSERT INTO attendance (student_id, class_subjects_id, status, day_date) VALUES ($1, $2, $3, $4) RETURNING *',
         [cleanStudentId, cleanClassSubjectId, cleanStatus, cleanDayDate] 
     )
     return result.rows[0];
@@ -43,7 +43,7 @@ export const bulkCreateAttendance = async (attendanceArray, user) => {
   for (const attendance of attendanceArray) { 
     try {
         const cleanStudentId = sanitizeInt(attendance.student_id);
-        const cleanClassSubjectId = sanitizeInt(attendance.class_subject_id);
+        const cleanClassSubjectId = sanitizeInt(attendance.class_subjects_id);
         const cleanStatus = sanitizeString(attendance.status);
         const cleanDayDate = sanitizeString(attendance.day_date);
 
@@ -79,7 +79,7 @@ export const bulkCreateAttendance = async (attendanceArray, user) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO attendance (student_id, class_subject_id, status, day_date) VALUES ($1, $2, $3, $4) RETURNING *`,
+            `INSERT INTO attendance (student_id, class_subjects_id, status, day_date) VALUES ($1, $2, $3, $4) RETURNING *`,
             [cleanStudentId, cleanClassSubjectId, cleanStatus, cleanDayDate]
         );
         results.successfulInserts.push(result.rows[0]);
@@ -115,7 +115,7 @@ export const getAllAttendance = async (user) => {
         result = await pool.query ( `
             SELECT attendance.*
             FROM attendance
-            JOIN class_subjects ON attendance.class_subject_id = class_subjects.id
+            JOIN class_subjects ON attendance.class_subjects_id = class_subjects.id
             WHERE class_subjects.teacher_id = $1
             AND attendance.is_active = TRUE
             ORDER BY attendance.id ASC`,
@@ -168,7 +168,7 @@ export const getAttendanceById = async (id,user) => {
         result = await pool.query(`
             SELECT attendance.*
             FROM attendance
-            JOIN class_subjects ON attendance.class_subject_id = class_subjects.id
+            JOIN class_subjects ON attendance.class_subjects_id = class_subjects.id
             WHERE attendance.id = $1
             AND class_subjects.teacher_id = $2
         `, [cleanAttendanceId, user.referenceId]);
@@ -207,7 +207,7 @@ export const updateAttendance = async(id, body , user) =>{
     )
     if(existing.rows.length===0) throw {status:404, message: 'Attendance id not found'}
     
-    const cleanClassSubjectId =body.classSubjectId !== undefined ? sanitizeInt(body.classSubjectId): existing.rows[0].class_subject_id;
+    const cleanClassSubjectId =body.classSubjectId !== undefined ? sanitizeInt(body.classSubjectId): existing.rows[0].class_subjects_id;
     const cleanStatus = body.status !== undefined  ? sanitizeString(body.status): existing.rows[0].status;
     const cleanStudentId =body.studentId !== undefined ? sanitizeInt(body.studentId): existing.rows[0].student_id;
 
@@ -218,7 +218,7 @@ export const updateAttendance = async(id, body , user) =>{
     if(user.role === 'teacher') {
         const classSubject = await pool.query(
             'SELECT * FROM class_subjects WHERE id = $1 ',
-            [existing.rows[0].class_subject_id]
+            [existing.rows[0].class_subjects_id]
         );
        if( classSubject.rows.length === 0) {
         throw { status: 404, message: 'Class subject not found' };
@@ -232,7 +232,7 @@ export const updateAttendance = async(id, body , user) =>{
 
    try {
     const result = await pool.query(
-        'UPDATE attendance SET class_subject_id = $1, status = $2 ,student_id = $3 WHERE id = $4 RETURNING *',
+        'UPDATE attendance SET class_subjects_id = $1, status = $2 ,student_id = $3 WHERE id = $4 RETURNING *',
         [cleanClassSubjectId, cleanStatus, cleanStudentId, cleanAttendanceId]
     );
 
@@ -260,7 +260,7 @@ export const deleteAttendance = async (id,user) => {
     if (user.role === 'teacher') {
         const classSubject = await pool.query(
             'SELECT * FROM class_subjects WHERE id = $1',
-            [existing.rows[0].class_subject_id]
+            [existing.rows[0].class_subjects_id]
         )
         if (classSubject.rows.length === 0) {
         throw { status: 404, message: 'Class subject not found' };
@@ -297,7 +297,7 @@ export const getAttendanceByStudentId = async (studentId,user) => {
         result = await pool.query(`
             SELECT attendance.*
             FROM attendance
-            JOIN class_subjects ON attendance.class_subject_id = class_subjects.id
+            JOIN class_subjects ON attendance.class_subjects_id = class_subjects.id
             WHERE attendance.student_id =$1
             AND class_subjects.teacher_id = $2`,
         [ cleanStudentId, user.referenceId]
@@ -312,12 +312,18 @@ export const getAttendanceByStudentId = async (studentId,user) => {
     }
 
     if (user.role === 'parent') {
+        const studentCheck = await pool.query(
+            'SELECT * FROM parent_students WHERE parent_id = $1 AND student_id = $2',
+            [user.referenceId, cleanStudentId]
+        );
+        if (studentCheck.rows.length === 0) throw { status: 403, message: 'Access denied' };
+
         result = await pool.query(`
             SELECT attendance.*
           FROM attendance 
             WHERE attendance.student_id = $1
-           AND attendance.student_id IN (SELECT student_id FROM parent_students WHERE parent_id = $2)`,
-            [cleanStudentId, user.referenceId]
+           `,
+            [cleanStudentId]
         );
     }
 

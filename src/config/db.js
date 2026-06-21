@@ -6,10 +6,6 @@ dotenv.config();
 
 
 
-console.log('DB host:', process.env.DB_HOST)
-console.log('DB name:', process.env.DB_NAME)
-
-
 const pool = new Pool({
     user:process.env.DB_USER,
     host: process.env.DB_HOST,  

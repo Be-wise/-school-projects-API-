@@ -10,8 +10,7 @@ import {sanitizeString,
 from '#utils/sanitize'
 //import { use } from 'react'
 
-console.log('JWT Secret:', process.env.JWT_SECRET)
-console.log('JWT Expires In:', process.env.JWT_EXPIRES_IN)
+
 
 export const registerUser = async (email, password, role, referenceId) => {
     const sanitizedEmail = sanitizeString(email);

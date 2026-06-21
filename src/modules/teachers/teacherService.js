@@ -139,7 +139,6 @@ export const deleteTeacher = async (id) => {
 
 
 export const assignTeacherToSubject = async (subjectId, teacherId) => {
-    console.log(subjectId, teacherId);
     
     const cleanSubjectId = sanitizeInt(subjectId)
     const cleanTeacherId = sanitizeInt(teacherId);

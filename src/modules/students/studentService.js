@@ -69,7 +69,7 @@ export const getAllStudents = async (user) => {
             SELECT DISTINCT students.*
             FROM students
             JOIN enrollments ON students.id = enrollments.student_id
-            JOIN class_subjects ON enrollments.class_subject_id = class_subjects.id
+            JOIN class_subjects ON enrollments.class_subjects_id = class_subjects.id
             WHERE class_subjects.teacher_id = $1
             AND students.is_active = TRUE
             AND enrollments.is_active = TRUE
@@ -101,7 +101,7 @@ export const getStudentById = async (id, user) =>{
             SELECT students.*
             FROM students
             JOIN enrollments ON students.id = enrollments.student_id
-            JOIN class_subjects ON enrollments.class_subject_id = class_subjects.id
+            JOIN class_subjects ON enrollments.class_subjects_id = class_subjects.id
             WHERE students.id = $1
              AND class_subjects.teacher_id = $2
             AND students.is_active = TRUE

@@ -145,10 +145,11 @@ export const assignParentToStudent = async(parentId, studentId) => {
             )
             AND EXISTS (
                 SELECT 1 FROM students WHERE id = $2 AND is_active = TRUE
-                RETURNING *
-            )`
+                
+            )RETURNING *`,
             [cleanParent, cleanStudent]
-        ); if(result.rows.length === 0) throw {status:404, message: 'Parent or student not found'};
+        )
+         if(result.rows.length === 0) throw {status:404, message: 'Parent or student not found'};
         return {message: 'Parent assigned to student successfully'};
     } catch (error) {
         if (error.code === '23505') {
@@ -158,5 +159,56 @@ export const assignParentToStudent = async(parentId, studentId) => {
         
     }
 
+}
+
+export const bulkAssignParentToStudent = async (parentStudentArrays) => {
+    const results ={
+        successfulAssignments: [],
+        failedAssignments: []
+    }; for (const assignment of parentStudentArrays) {
+        try {
+            const cleanParent = sanitizeInt(assignment.parent_id);
+            const cleanStudent = sanitizeInt(assignment.student_id);
+
+            if(!isValidInt(cleanParent)) {
+                results.failedAssignments.push({...assignment, error: 'Invalid parent ID'});
+                continue;
+            }
+            if(!isValidInt(cleanStudent)) {
+                results.failedAssignments.push({...assignment, error: 'Invalid student ID'});
+                continue;
+            }
+
+            const result = await pool.query(
+                `INSERT INTO parent_students(parent_id, student_id)
+                SELECT $1, $2
+                WHERE EXISTS (
+                    SELECT 1 FROM parents WHERE id = $1 AND is_active = TRUE
+                )
+                AND EXISTS (
+                    SELECT 1 FROM students WHERE id = $2 AND is_active = TRUE
+            )    RETURNING *`,
+                [cleanParent, cleanStudent]
+            );
+
+            if (result.rows.length === 0) {
+                results.failedAssignments.push({...assignment, error: 'Parent or student not found'});
+                continue;
+            }
+
+            results.successfulAssignments.push(result.rows[0]);
+        } catch (error) {           if (error.code === '23505') {
+                results.failedAssignments.push({...assignment, error: 'Parent already assigned to student'});
+            } else {
+                results.failedAssignments.push({...assignment, error: 'Unexpected error'});
+            }
+
+        }
+    }
+    return {message: `${results.successfulAssignments.length} assignments created successfully, ${results.failedAssignments.length} assignments failed.`,
+    successfulAssignments: results.successfulAssignments,
+    failedAssignments: results.failedAssignments
+    }
+            
 }
 

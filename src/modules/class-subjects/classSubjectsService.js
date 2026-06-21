@@ -176,7 +176,7 @@ export const enrollStudentInClassSubject = async (studentId, classSubjectId, use
 
     try {
         const result = await pool.query(
-            `INSERT INTO enrollments (student_id, class_subject_id)
+            `INSERT INTO enrollments (student_id, class_subjects_id)
             SELECT $1, $2
             WHERE EXISTS (
                 SELECT 1 FROM students WHERE id = $1 AND is_active = TRUE
@@ -206,7 +206,7 @@ export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray, user) =
     }; for (const enrollment of enrollmentsArray) {
         try {
             const cleanStudentId = sanitizeInt(enrollment.student_id);
-            const cleanClassSubjectId = sanitizeInt(enrollment.class_subject_id);
+            const cleanClassSubjectId = sanitizeInt(enrollment.class_subjects_id);
 
             if (!isValidInt(cleanStudentId)) {
                 results.failedInserts.push({ ...enrollment, error: 'Invalid student ID' });
@@ -236,7 +236,7 @@ export const bulkEnrollStudentsInClassSubject = async (enrollmentsArray, user) =
             }
 
             const result = await pool.query(
-                `INSERT INTO enrollments (student_id, class_subject_id)
+                `INSERT INTO enrollments (student_id, class_subjects_id)
                 SELECT $1, $2
                 WHERE EXISTS (
                     SELECT 1 FROM students WHERE id = $1 AND is_active = TRUE
@@ -279,7 +279,7 @@ export const unenrollStudentFromClassSubject = async (studentId, classSubjectId,
     if(!isValidInt(cleanClassSubjectId)) throw { status:400, message: 'Invalid class subject ID' };
 
     const existing = await pool.query (
-        'SELECT * FROM enrollments WHERE student_id = $1 AND class_subject_id = $2 AND is_active = TRUE',
+        'SELECT * FROM enrollments WHERE student_id = $1 AND class_subjects_id = $2 AND is_active = TRUE',
         [cleanStudentId, cleanClassSubjectId]
     );
 
@@ -298,7 +298,7 @@ export const unenrollStudentFromClassSubject = async (studentId, classSubjectId,
     }
 
     const result = await pool.query(
-    'UPDATE enrollments SET is_active = FALSE WHERE student_id = $1 AND class_subject_id = $2 AND is_active = TRUE RETURNING *',
+    'UPDATE enrollments SET is_active = FALSE WHERE student_id = $1 AND class_subjects_id = $2 AND is_active = TRUE RETURNING *',
     [cleanStudentId, cleanClassSubjectId]);
 
     if(result.rows.length === 0) throw { status:404, message: 'Enrollment not found' };
@@ -327,7 +327,7 @@ export const getStudentsByClassSubjectId = async (classSubjectId,user)=>{
         `SELECT students.*
         FROM enrollments
         JOIN students ON enrollments.student_id = students.id
-        WHERE enrollments.class_subject_id = $1
+        WHERE enrollments.class_subjects_id = $1
         AND enrollments.is_active = TRUE
         AND students.is_active = TRUE`,
         [cleanClassSubjectId]
